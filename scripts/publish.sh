@@ -29,7 +29,7 @@ ensure_package() {
         cat head-error >&2
         return 1
     fi
-    gh release download "$tag" --pattern "${key##*/}" --output package.deb --clobber
+    gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern "${key##*/}" --output package.deb --clobber
     printf '%s  package.deb\n' "$digest" | sha256sum --check --status
     gh attestation verify package.deb --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
     put "$key" package.deb "$immutable" application/vnd.debian.binary-package --if-none-match '*' --metadata "sha256=$digest"
@@ -39,7 +39,7 @@ tags=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '
 touch combined
 while read -r tag; do
     [[ $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$ ]] || continue
-    gh release download "$tag" --pattern Packages --output fragment --clobber
+    gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern Packages --output fragment --clobber
     pairs=$(awk 'BEGIN {RS=""; FS="\n"} {for(i=1;i<=NF;i++){if($i~/^Filename: /) file=substr($i,11); if($i~/^SHA256: /) hash=substr($i,9)} print file,hash}' fragment)
     while read -r path hash; do
         ensure_package "$tag" "$path" "$hash"
