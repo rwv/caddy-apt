@@ -22,9 +22,18 @@ done
     dpkg-scanpackages --multiversion pool /dev/null > Packages
     sha256sum pool/main/*.deb > SHA256SUMS
 )
+if ! tagged_commit=$(git ls-remote origin "refs/tags/$tag" | cut -f1); then
+    exit 1
+fi
+if [[ -z $tagged_commit ]]; then
+    gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$GITHUB_SHA" >/dev/null
+elif [[ $tagged_commit != "$GITHUB_SHA" ]]; then
+    echo "Release tag $tag points to a different build commit." >&2
+    exit 1
+fi
 if gh release view "$tag" >/dev/null 2>&1; then
     gh release upload "$tag" "$stage"/pool/main/*.deb "$stage/Packages" "$stage/SHA256SUMS" --clobber
 else
-    gh release create "$tag" --draft --target "$GITHUB_SHA" --title "Caddy ${version#v} package revision $REVISION" --notes "Build provenance is available for each Debian package." "$stage"/pool/main/*.deb "$stage/Packages" "$stage/SHA256SUMS"
+    gh release create "$tag" --verify-tag --draft --title "Caddy ${version#v} package revision $REVISION" --notes "Build provenance is available for each Debian package." "$stage"/pool/main/*.deb "$stage/Packages" "$stage/SHA256SUMS"
 fi
 gh release edit "$tag" --draft=false
