@@ -1,0 +1,22 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+    for unit in caddy.service caddy-api.service; do
+        deb-systemd-helper unmask "$unit" >/dev/null
+    done
+    if deb-systemd-helper --quiet was-enabled caddy.service; then
+        deb-systemd-helper enable caddy.service >/dev/null
+    else
+        deb-systemd-helper update-state caddy.service >/dev/null
+    fi
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload
+        for unit in caddy.service caddy-api.service; do
+            if systemctl is-active --quiet "$unit"; then
+                deb-systemd-invoke try-restart "$unit"
+            elif systemctl is-enabled --quiet "$unit"; then
+                deb-systemd-invoke start "$unit"
+            fi
+        done
+    fi
+fi

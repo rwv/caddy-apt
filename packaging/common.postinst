@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+if [ "$1" = configure ]; then
+    getent group caddy >/dev/null || groupadd --system caddy
+    getent passwd caddy >/dev/null || useradd --system --gid caddy --create-home --home-dir /var/lib/caddy --shell /usr/sbin/nologin caddy
+    if getent group www-data >/dev/null; then
+        usermod -aG www-data caddy
+    fi
+    if [ ! -d /var/log/caddy ]; then
+        install -d -o caddy -g caddy /var/log/caddy
+    fi
+fi
