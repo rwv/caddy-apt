@@ -45,7 +45,7 @@ Package: $package
 Version: $version
 Architecture: $arch
 Maintainer: rwv <rwv@users.noreply.github.com>
-Depends: caddy-apt-common (>= 1), ca-certificates
+Depends: caddy-apt-common (>= $COMMON_VERSION), ca-certificates
 Provides: caddy-apt-binary
 Conflicts: caddy, caddy-apt-binary
 Description: Caddy web server ($variant build)
@@ -66,7 +66,7 @@ if [[ $arch == amd64 ]]; then
     printf '/etc/caddy/Caddyfile\n' > "$root/DEBIAN/conffiles"
     cat > "$root/DEBIAN/control" <<CONTROL
 Package: caddy-apt-common
-Version: 1
+Version: $COMMON_VERSION
 Architecture: all
 Maintainer: rwv <rwv@users.noreply.github.com>
 Depends: passwd, init-system-helpers
@@ -74,5 +74,5 @@ Conflicts: caddy
 Replaces: caddy
 Description: Shared configuration and official systemd units for Caddy APT
 CONTROL
-    SOURCE_DATE_EPOCH=1700000000 dpkg-deb --root-owner-group --build "$root" out/caddy-apt-common_1_all.deb
+    SOURCE_DATE_EPOCH=1700000000 dpkg-deb --root-owner-group --build "$root" "out/caddy-apt-common_${COMMON_VERSION}_all.deb"
 fi

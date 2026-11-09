@@ -33,7 +33,7 @@ sudo apt update
 sudo apt install caddy-cloudflare
 ```
 
-Use `sudo apt install caddy-stock` to select the standard build. Before migrating from an existing `caddy` package, back up `/etc/caddy` and `/var/lib/caddy`, review APT's removal plan with `apt -s install caddy-cloudflare`, and keep the existing Caddyfile if dpkg prompts. Before switching builds, make sure the Caddyfile uses only modules supported by the target.
+Use `sudo apt install caddy-stock` to select the standard build. Before migrating from an existing `caddy` package, back up `/etc/caddy` and `/var/lib/caddy`, review APT's removal plan with `apt -s install caddy-cloudflare`, and keep the existing Caddyfile if dpkg prompts. The upstream package's purge script deletes the Caddy user and shared data and config directories. After an APT replacement, leave the old package in the removed state. Before switching builds, make sure the Caddyfile uses only modules supported by the target.
 
 For Cloudflare DNS, put the token in a root-owned environment file and use an `EnvironmentFile=` systemd drop-in. Reference it in the Caddyfile as `dns cloudflare {env.CLOUDFLARE_API_TOKEN}`.
 
@@ -41,7 +41,7 @@ For Cloudflare DNS, put the token in a root-owned environment file and use an `E
 
 GitHub Actions checks stable upstream releases daily from the baseline in `packaging/versions.env`. It skips published tags and builds each missing version on native runners. The workflow attests the final Debian packages and verifies them before publishing. It uses the repository's built-in token.
 
-Package versions start with the Caddy version and Debian revision, followed by any compiled plugin versions. Add or update a plugin manifest under `packaging/plugins/` and bump the revision for a rebuild of the same Caddy version. Keep the upstream systemd files pinned to the commit in `packaging/upstream/REVISION`.
+Package versions start with the Caddy version and Debian revision, followed by any compiled plugin versions. Add or update a plugin manifest under `packaging/plugins/` and bump the revision for a rebuild of the same Caddy version. Bump `COMMON_VERSION` when the shared package changes. Keep the upstream systemd files pinned to the commit in `packaging/upstream/REVISION`.
 
 ```sh
 apt-cache madison caddy-cloudflare
@@ -50,3 +50,5 @@ gh attestation verify ./caddy-cloudflare_*.deb --repo rwv/caddy-apt
 ```
 
 R2 serves versioned packages and hash-addressed APT indexes with immutable cache headers. The publisher uploads these before the signed `InRelease`. Earlier published versions stay indexed. The workflow can rerun the APT publish step from existing GitHub Releases.
+
+R2 Bucket Lock protects `pool/` and both architectures' `by-hash/` paths indefinitely. Mutable APT indexes and the signing key remain writable.

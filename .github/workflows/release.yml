@@ -103,3 +103,4 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
         run: scripts/publish.sh
+      - run: scripts/verify.sh
