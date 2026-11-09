@@ -6,6 +6,7 @@ Signed Debian packages for Linux `amd64` and `arm64`. Choose one build per host.
 | --- | --- |
 | `caddy-stock` | Caddy with standard modules |
 | `caddy-cloudflare` | Caddy with the Cloudflare DNS provider |
+| `caddy-nuln-alidns` | Caddy with Alibaba Cloud DNS and ESA providers from [nuln/caddy-plugins](https://pkg.go.dev/github.com/nuln/caddy-plugins/alidns) |
 
 Both builds use the upstream Caddy systemd units and the shared `caddy-apt-common` package. They conflict with each other and with the upstream `caddy` package.
 

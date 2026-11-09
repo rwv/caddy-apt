@@ -17,7 +17,8 @@ for arch in amd64 arm64; do
     grep -Eiq '^cache-control:.*immutable' headers
     printf '%s  Packages.gz\n' "$digest" | sha256sum --check
     gzip -dc Packages.gz > Packages
-    for package in caddy-stock caddy-cloudflare; do
+    for manifest in "$root"/packaging/plugins/*; do
+        package=caddy-${manifest##*/}
         read -r path digest < <(awk -v package="$package" 'BEGIN{RS="";FS="\n"} $0 ~ "(^|\n)Package: " package "(\n|$)" {for(i=1;i<=NF;i++){if($i~/^Filename: /) file=substr($i,11); if($i~/^SHA256: /) hash=substr($i,9)} print file,hash; exit}' Packages)
         curl -fsS -D headers -o package.deb "$origin/$path"
         grep -Eiq '^cache-control:.*immutable' headers

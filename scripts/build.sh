@@ -42,6 +42,10 @@ if [[ $package != caddy-apt-common ]]; then
     fi
     printf '%s\n' "$build_info" | sed '1d' > "$root/usr/share/doc/$package/build-info"
     install -m644 packaging/upstream/LICENSE "$root/usr/share/doc/$package/copyright"
+    if [[ -f packaging/licenses/$variant ]]; then
+        printf '\n' >> "$root/usr/share/doc/$package/copyright"
+        cat "packaging/licenses/$variant" >> "$root/usr/share/doc/$package/copyright"
+    fi
     cat > "$root/DEBIAN/control" <<CONTROL
 Package: $package
 Version: $version
