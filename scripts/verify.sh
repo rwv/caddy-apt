@@ -5,6 +5,7 @@ origin=https://caddy-apt.rwv.dev
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 cd "$work"
+curl -fsS "$origin/caddy-apt.gpg" | cmp - "$root/caddy-apt.gpg"
 
 curl -fsS -D headers -o InRelease "$origin/dists/stable/InRelease"
 grep -Eiq '^cache-control:.*(no-cache|no-store)' headers
