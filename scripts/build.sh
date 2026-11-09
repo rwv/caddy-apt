@@ -2,22 +2,24 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source packaging/versions.env
-CADDY_VERSION=${1:-$CADDY_VERSION}
+package=${1:?Specify a package such as caddy-stock}
+CADDY_VERSION=${2:-$CADDY_VERSION}
 arch=$(dpkg --print-architecture)
 build=$(mktemp -d)
 trap 'rm -rf "$build"' EXIT
 mkdir -p out
-export CGO_ENABLED=0 GOBIN="$build"
-go install "github.com/caddyserver/xcaddy/cmd/xcaddy@$XCADDY_VERSION"
-
-for manifest in packaging/plugins/*; do
-    variant=${manifest##*/}
-    package=caddy-$variant
+if [[ $package != caddy-apt-common ]]; then
+    variant=${package#caddy-}
+    manifest=packaging/plugins/$variant
+    read -r revision revision_upstream < "$manifest"
+    [[ $CADDY_VERSION == "$revision_upstream" ]] || revision=1
+    export CGO_ENABLED=0 GOBIN="$build"
+    go install "github.com/caddyserver/xcaddy/cmd/xcaddy@$XCADDY_VERSION"
     root=$build/$package
     args=()
     while read -r label module version id; do
         args+=(--with "$module@$version")
-    done < "$manifest"
+    done < <(tail -n +2 "$manifest")
 
     install -d "$root/usr/bin" "$root/DEBIAN" "$root/usr/share/doc/$package"
     "$build/xcaddy" build "$CADDY_VERSION" "${args[@]}" --output "$root/usr/bin/caddy"
@@ -25,7 +27,7 @@ for manifest in packaging/plugins/*; do
     build_info=$(go version -m "$binary")
     actual_caddy=$(awk '$1 == "dep" && $2 == "github.com/caddyserver/caddy/v2" {print $3}' <<< "$build_info")
     test "$actual_caddy" = "$CADDY_VERSION"
-    version=${CADDY_VERSION#v}-$REVISION
+    version=${CADDY_VERSION#v}-$revision
     separator=+
     modules=$("$binary" list-modules)
     while read -r label module pinned id; do
@@ -34,7 +36,7 @@ for manifest in packaging/plugins/*; do
         grep -Fxq "$id" <<< "$modules"
         version+="$separator$label${actual#v}"
         separator=.
-    done < "$manifest"
+    done < <(tail -n +2 "$manifest")
     if [[ $variant == stock ]]; then
         ! grep -Fxq dns.providers.cloudflare <<< "$modules" || exit 1
     fi
@@ -53,9 +55,7 @@ CONTROL
     install -m755 packaging/binary.postinst "$root/DEBIAN/postinst"
     install -m755 packaging/binary.prerm "$root/DEBIAN/prerm"
     dpkg-deb --root-owner-group --build "$root" "out/${package}_${version}_$arch.deb"
-done
-
-if [[ $arch == amd64 ]]; then
+else
     root=$build/common
     install -d "$root/DEBIAN" "$root/usr/lib/systemd/system" "$root/etc/caddy" "$root/usr/share/caddy" "$root/usr/share/doc/caddy-apt-common"
     install -m644 packaging/upstream/*.service "$root/usr/lib/systemd/system/"

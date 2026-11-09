@@ -38,7 +38,7 @@ tags=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '
 [[ -n $tags ]]
 touch combined
 while read -r tag; do
-    [[ $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$ ]] || continue
+    [[ $tag =~ ^(caddy-[a-z0-9-]+/)?v[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$ || $tag =~ ^caddy-apt-common/v[0-9]+$ ]] || continue
     gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern Packages --output fragment --clobber
     pairs=$(awk 'BEGIN {RS=""; FS="\n"} {for(i=1;i<=NF;i++){if($i~/^Filename: /) file=substr($i,11); if($i~/^SHA256: /) hash=substr($i,9)} print file,hash}' fragment)
     while read -r path hash; do

@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
-source packaging/versions.env
-version=$1
-tag=$version-$REVISION
+package=$1
+tag=$2
+artifact_id=${tag//\//-}
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 mkdir -p "$stage/pool/main"
-common_asset=caddy-apt-common_${COMMON_VERSION}_all.deb
-common_tag=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-    --jq ".[] | select(.draft == false and any(.assets[]; .name == \"$common_asset\")) | .tag_name" | sed -n '1p')
-if [[ -n $common_tag ]]; then
-    gh release download "$common_tag" --pattern "$common_asset" --dir "$stage/pool/main"
-    gh attestation verify "$stage/pool/main/$common_asset" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
+if [[ $package == caddy-apt-common ]]; then
+    architectures=(all)
+else
+    architectures=(amd64 arm64)
 fi
-for package in "artifacts/$version/"*/*.deb; do
-    gh attestation verify "$package" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
-    [[ -f $stage/pool/main/${package##*/} ]] || cp "$package" "$stage/pool/main/"
+for arch in "${architectures[@]}"; do
+    files=(artifacts/"$artifact_id-$arch"/*.deb)
+    deb=${files[0]}
+    if [[ ${#files[@]} != 1 || ! -f $deb ]]; then
+        echo "Missing unique $arch artifact for $tag" >&2
+        exit 1
+    fi
+    test "$(dpkg-deb -f "$deb" Package)" = "$package"
+    test "$(dpkg-deb -f "$deb" Architecture)" = "$arch"
+    gh attestation verify "$deb" --repo "$GITHUB_REPOSITORY" --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
+    cp "$deb" "$stage/pool/main/"
 done
 (
     cd "$stage"
@@ -34,6 +40,6 @@ fi
 if gh release view "$tag" >/dev/null 2>&1; then
     gh release upload "$tag" "$stage"/pool/main/*.deb "$stage/Packages" "$stage/SHA256SUMS" --clobber
 else
-    gh release create "$tag" --verify-tag --draft --title "Caddy ${version#v} package revision $REVISION" --notes "Build provenance is available for each Debian package." "$stage"/pool/main/*.deb "$stage/Packages" "$stage/SHA256SUMS"
+    gh release create "$tag" --verify-tag --draft --title "$package $(dpkg-deb -f "$deb" Version)" --notes "Build provenance is available for each Debian package." "$stage"/pool/main/*.deb "$stage/Packages" "$stage/SHA256SUMS"
 fi
 gh release edit "$tag" --draft=false
