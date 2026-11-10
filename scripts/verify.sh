@@ -19,7 +19,24 @@ for arch in amd64 arm64; do
     gzip -dc Packages.gz > Packages
     for manifest in "$root"/packaging/plugins/*; do
         package=caddy-${manifest##*/}
-        read -r path digest < <(awk -v package="$package" 'BEGIN{RS="";FS="\n"} $0 ~ "(^|\n)Package: " package "(\n|$)" {for(i=1;i<=NF;i++){if($i~/^Filename: /) file=substr($i,11); if($i~/^SHA256: /) hash=substr($i,9)} print file,hash; exit}' Packages)
+        latest=
+        while read -r version candidate checksum; do
+            if [[ -z $latest ]] || dpkg --compare-versions "$version" gt "$latest"; then
+                latest=$version
+                path=$candidate
+                digest=$checksum
+            fi
+        done < <(awk -v package="$package" 'BEGIN{RS=""; FS="\n"}
+            $0 ~ "(^|\n)Package: " package "(\n|$)" {
+                for (i=1;i<=NF;i++) {
+                    if ($i~/^Version: /) version=substr($i,10)
+                    if ($i~/^Filename: /) file=substr($i,11)
+                    if ($i~/^SHA256: /) hash=substr($i,9)
+                }
+                print version,file,hash
+            }' Packages)
+        test -n "$latest"
+        echo "Verifying $package $latest ($arch)"
         curl -fsS -D headers -o package.deb "$origin/$path"
         grep -Eiq '^cache-control:.*immutable' headers
         printf '%s  package.deb\n' "$digest" | sha256sum --check
