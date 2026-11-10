@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 source packaging/versions.env
+source scripts/package-version.sh
 package=${1:?Specify a package such as caddy-stock}
 CADDY_VERSION=${2:-$CADDY_VERSION}
 arch=$(dpkg --print-architecture)
@@ -11,8 +12,6 @@ mkdir -p out
 if [[ $package != caddy-apt-common ]]; then
     variant=${package#caddy-}
     manifest=packaging/plugins/$variant
-    read -r revision revision_upstream < "$manifest"
-    [[ $CADDY_VERSION == "$revision_upstream" ]] || revision=1
     export CGO_ENABLED=0 GOBIN="$build"
     go install "github.com/caddyserver/xcaddy/cmd/xcaddy@$XCADDY_VERSION"
     root=$build/$package
@@ -27,15 +26,12 @@ if [[ $package != caddy-apt-common ]]; then
     build_info=$(go version -m "$binary")
     actual_caddy=$(awk '$1 == "dep" && $2 == "github.com/caddyserver/caddy/v2" {print $3}' <<< "$build_info")
     test "$actual_caddy" = "$CADDY_VERSION"
-    version=${CADDY_VERSION#v}-$revision
-    separator=+
+    version=$(package_version "$CADDY_VERSION" "$manifest")
     modules=$("$binary" list-modules)
     while read -r label module pinned id; do
         actual=$(awk -v module="$module" '$1 == "dep" && $2 == module {print $3}' <<< "$build_info")
         test "$actual" = "$pinned"
         grep -Fxq "$id" <<< "$modules"
-        version+="$separator$label${actual#v}"
-        separator=.
     done < <(tail -n +2 "$manifest")
     if [[ $variant == stock ]]; then
         ! grep -Fxq dns.providers.cloudflare <<< "$modules" || exit 1

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 source packaging/versions.env
+source scripts/package-version.sh
 published=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.draft == false and .prerelease == false) | {tag: .tag_name, assets: [.assets[].name]}' | jq -s '.')
 if [[ -n ${REQUESTED_VERSION:-} ]]; then
     [[ $REQUESTED_VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
@@ -36,16 +37,9 @@ queue_package() {
         dpkg --compare-versions "${upstream#v}" ge "${CADDY_VERSION#v}" || continue
         for manifest in packaging/plugins/*; do
             package=caddy-${manifest##*/}
-            {
-                read -r revision revision_upstream
-                [[ $upstream == "$revision_upstream" ]] || revision=1
-                version=${upstream#v}-$revision
-                separator=+
-                while read -r label module pinned id; do
-                    version+="$separator$label${pinned#v}"
-                    separator=.
-                done
-            } < "$manifest"
+            version=$(package_version "$upstream" "$manifest")
+            revision=${version%%+*}
+            revision=${revision##*-}
             queue_package "$package" "$upstream" "$package/$upstream-$revision" "$version" amd64 arm64
         done
     done <<< "$candidates"
