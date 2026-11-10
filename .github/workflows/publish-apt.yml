@@ -34,13 +34,6 @@ jobs:
           APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
         run: scripts/publish.sh
       - run: scripts/verify.sh
-      - name: Signal successful reconciliation
-        env:
-          APT_HEARTBEAT_URL: ${{ secrets.APT_HEARTBEAT_URL }}
-        run: |
-          if [[ -n $APT_HEARTBEAT_URL ]]; then
-            curl -fsS --max-time 15 --output /dev/null "$APT_HEARTBEAT_URL"
-          fi
   alert:
     needs: apt
     if: ${{ !cancelled() && (needs.apt.result == 'success' || needs.apt.result == 'failure') }}
