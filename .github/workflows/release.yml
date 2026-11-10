@@ -7,10 +7,6 @@ on:
       version:
         description: Optional upstream tag (for example v2.11.9)
         type: string
-      publish_apt:
-        description: Publish signed APT metadata to R2
-        type: boolean
-        default: true
 permissions:
   contents: read
 concurrency:
@@ -90,21 +86,3 @@ jobs:
           PACKAGE: ${{ matrix.package }}
           RELEASE_TAG: ${{ matrix.tag }}
         run: scripts/release.sh "$PACKAGE" "$RELEASE_TAG"
-  apt:
-    needs: [discover, release]
-    if: ${{ !cancelled() && needs.discover.result == 'success' && (github.event_name == 'schedule' || inputs.publish_apt) }}
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      attestations: read
-    steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - run: sudo apt-get update && sudo apt-get install -y apt-utils
-      - env:
-          GH_TOKEN: ${{ github.token }}
-          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
-        run: scripts/publish.sh
-      - run: scripts/verify.sh

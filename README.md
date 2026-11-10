@@ -50,6 +50,6 @@ apt download caddy-cloudflare
 gh attestation verify ./caddy-cloudflare_*.deb --repo rwv/caddy-apt
 ```
 
-R2 serves versioned packages and hash-addressed APT indexes with immutable cache headers. The publisher uploads these before the signed `InRelease`. Earlier published versions stay indexed. The workflow can rerun the APT publish step from existing GitHub Releases.
+R2 serves versioned packages and hash-addressed APT indexes with immutable cache headers. The publisher uploads these before the signed `InRelease`. Earlier published versions stay indexed. The separate **Publish APT index** workflow runs after the main-branch release workflow completes and reads published GitHub Releases. To resync the index independently, run `gh workflow run publish-apt.yml --ref main`.
 
 R2 Bucket Lock protects `pool/` and both architectures' `by-hash/` paths indefinitely. Mutable APT indexes and the signing key remain writable.

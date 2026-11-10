@@ -1,0 +1,28 @@
+name: Publish APT index
+on:
+  workflow_run:
+    workflows: [Build and publish Caddy]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+  attestations: read
+concurrency:
+  group: caddy-apt-publish
+  cancel-in-progress: false
+jobs:
+  apt:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - run: sudo apt-get update && sudo apt-get install -y apt-utils
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+        run: scripts/publish.sh
+      - run: scripts/verify.sh
