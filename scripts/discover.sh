@@ -12,6 +12,9 @@ fi
 queue_package() {
     local package=$1 upstream=$2 tag=$3 version=$4
     shift 4
+    if [[ -n ${REQUESTED_PACKAGE:-} && $package != "$REQUESTED_PACKAGE" ]]; then
+        return 0
+    fi
     local arch
     if jq -e --arg tag "$tag" 'any(.[]; .tag == $tag)' <<< "$published" >/dev/null; then
         return 0

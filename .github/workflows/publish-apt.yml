@@ -37,25 +37,32 @@ jobs:
           fi
   alert:
     needs: apt
-    if: ${{ failure() && needs.apt.result == 'failure' }}
+    if: ${{ !cancelled() && (needs.apt.result == 'success' || needs.apt.result == 'failure') }}
     runs-on: ubuntu-24.04
     permissions:
       actions: read
       issues: write
     env:
       GH_TOKEN: ${{ github.token }}
+      APT_RESULT: ${{ needs.apt.result }}
     steps:
-      - name: Alert on repeated APT failures
+      - name: Report APT publishing status
         run: |
+          title='APT index publishing failed twice'
+          issue=$(gh issue list --repo "$GITHUB_REPOSITORY" --search "in:title $title" \
+            --json number,title --jq "[.[] | select(.title == \"$title\")][0].number // empty")
+          if [[ $APT_RESULT == success ]]; then
+            if [[ -n $issue ]]; then
+              gh issue close "$issue" --repo "$GITHUB_REPOSITORY" --comment "APT reconciliation recovered: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            fi
+            exit 0
+          fi
           previous=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/publish-apt.yml/runs?status=completed&per_page=10" \
             --jq '[.workflow_runs[] | select(.conclusion == "success" or .conclusion == "failure")][0].conclusion')
           if [[ $previous != failure ]]; then
             exit 0
           fi
-          title='APT index publishing failed twice'
-          issue=$(gh issue list --repo "$GITHUB_REPOSITORY" --search "in:title $title" \
-            --json number,title --jq "[.[] | select(.title == \"$title\")][0].number // empty")
           if [[ -z $issue ]]; then
-            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" \
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --assignee "$GITHUB_REPOSITORY_OWNER" \
               --body "Two consecutive APT publishing runs failed. Latest run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           fi

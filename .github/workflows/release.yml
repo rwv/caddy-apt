@@ -7,6 +7,9 @@ on:
       version:
         description: Optional upstream tag (for example v2.11.9)
         type: string
+      package:
+        description: Optional package to release (for example caddy-cloudflare)
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -23,7 +26,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REQUESTED_VERSION: ${{ inputs.version }}
-        run: echo "plan=$(scripts/discover.sh)" >> "$GITHUB_OUTPUT"
+          REQUESTED_PACKAGE: ${{ inputs.package }}
+        run: |
+          plan=$(scripts/discover.sh)
+          echo "plan=$plan" >> "$GITHUB_OUTPUT"
   build:
     needs: discover
     if: fromJSON(needs.discover.outputs.plan).builds[0] != null

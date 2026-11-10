@@ -1,0 +1,19 @@
+alidns.example.com {
+	tls {
+		dns alidns {
+			access_key_id example
+			access_key_secret example
+		}
+	}
+	respond "OK"
+}
+
+esa.example.com {
+	tls {
+		dns esa {
+			access_key_id example
+			access_key_secret example
+		}
+	}
+	respond "OK"
+}

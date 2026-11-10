@@ -1,0 +1,6 @@
+example.com {
+	tls {
+		dns cloudflare sample-token
+	}
+	respond "OK"
+}

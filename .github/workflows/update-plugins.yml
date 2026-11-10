@@ -1,0 +1,42 @@
+name: Update Caddy plugins
+on:
+  schedule:
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+    inputs:
+      verify_current:
+        description: Build and verify existing pins without updating them
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: caddy-plugin-updates
+  cancel-in-progress: false
+jobs:
+  discover:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    outputs:
+      variants: ${{ steps.variants.outputs.names }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - id: variants
+        run: |
+          names=$(awk 'FNR == 2 {sub(/^.*\//, "", FILENAME); print FILENAME}' packaging/plugins/* | jq -Rsc 'split("\n")[:-1]')
+          echo "names=$names" >> "$GITHUB_OUTPUT"
+  update:
+    needs: discover
+    if: fromJSON(needs.discover.outputs.variants)[0] != null
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ${{ fromJSON(needs.discover.outputs.variants) }}
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    uses: ./.github/workflows/update-plugin.yml
+    with:
+      variant: ${{ matrix.variant }}
+      verify_current: ${{ inputs.verify_current || false }}
