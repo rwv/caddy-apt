@@ -2,6 +2,7 @@
 set -euo pipefail
 : "${R2_ENDPOINT:?}" "${AWS_ACCESS_KEY_ID:?}" "${AWS_SECRET_ACCESS_KEY:?}" "${APT_SIGNING_KEY:?}"
 repo_root=$(cd "$(dirname "$0")/.." && pwd)
+source "$repo_root/packaging/versions.env"
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 cd "$stage"
@@ -47,6 +48,15 @@ while read -r tag; do
     cat fragment >> combined
 done <<< "$tags"
 [[ -s combined ]]
+if ! awk -v version="$COMMON_VERSION" 'BEGIN{RS=""; FS="\n"}
+    { common=expected=0; for (i=1;i<=NF;i++) {
+        if ($i=="Package: caddy-apt-common") common=1
+        if ($i=="Version: " version) expected=1
+    } if (common && expected) found=1 }
+    END{exit !found}' combined; then
+    echo "The APT index requires caddy-apt-common $COMMON_VERSION, but its release is missing." >&2
+    exit 1
+fi
 for arch in amd64 arm64; do
     dir=dists/stable/main/binary-$arch
     mkdir -p "$dir"
