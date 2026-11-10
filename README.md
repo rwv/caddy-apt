@@ -6,7 +6,7 @@ Signed Debian packages for Linux `amd64` and `arm64`. Choose one build per host.
 | --- | --- |
 | `caddy-stock` | Caddy with standard modules |
 | `caddy-cloudflare` | Caddy with the Cloudflare DNS provider |
-| `caddy-cloudflare-s3` | Cloudflare DNS and [S3 certificate storage](https://github.com/rkl110/certmagic-s3) |
+| `caddy-cloudflare-s3` | Cloudflare DNS and [S3 certificate storage](https://github.com/techknowlogick/certmagic-s3) |
 | `caddy-nuln-alidns` | Caddy with Alibaba Cloud DNS and ESA providers from [nuln/caddy-plugins](https://pkg.go.dev/github.com/nuln/caddy-plugins/alidns) |
 
 Both builds use the upstream Caddy systemd units and the shared `caddy-apt-common` package. They conflict with each other and with the upstream `caddy` package.
@@ -39,7 +39,7 @@ Use `sudo apt install caddy-stock` to select the standard build. Before migratin
 
 For Cloudflare DNS, put the token in a root-owned environment file and use an `EnvironmentFile=` systemd drop-in. Reference it in the Caddyfile as `dns cloudflare {env.CLOUDFLARE_API_TOKEN}`.
 
-With `caddy-cloudflare-s3`, set `storage s3` in the global Caddyfile block. Use a private bucket for Caddy data, including certificate private keys. See the [S3 configuration reference](https://github.com/rkl110/certmagic-s3#configuration) for endpoints and credentials. Use one Caddy instance per storage prefix because the plugin's lock acquisition is not atomic.
+With `caddy-cloudflare-s3`, set `storage s3` in the global Caddyfile block. Use a private bucket for Caddy data, including certificate private keys. See the [S3 configuration reference](https://github.com/techknowlogick/certmagic-s3#configuration) for endpoints and credentials. For a shared storage prefix, use the same upgraded package on all Caddy instances. The S3 backend must support atomic conditional writes with `If-None-Match` and `If-Match`. If you use `tls internal` with an empty prefix, start one instance first to initialize the local CA before starting the others.
 
 ## Releases
 
