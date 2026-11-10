@@ -4,6 +4,8 @@ on:
     workflows: [Build and publish Caddy]
     branches: [main]
     types: [completed]
+  schedule:
+    - cron: '47 5 * * *'
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,3 +28,34 @@ jobs:
           APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
         run: scripts/publish.sh
       - run: scripts/verify.sh
+      - name: Signal successful reconciliation
+        env:
+          APT_HEARTBEAT_URL: ${{ secrets.APT_HEARTBEAT_URL }}
+        run: |
+          if [[ -n $APT_HEARTBEAT_URL ]]; then
+            curl -fsS --max-time 15 --output /dev/null "$APT_HEARTBEAT_URL"
+          fi
+  alert:
+    needs: apt
+    if: ${{ failure() && needs.apt.result == 'failure' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Alert on repeated APT failures
+        run: |
+          previous=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/publish-apt.yml/runs?status=completed&per_page=10" \
+            --jq '[.workflow_runs[] | select(.conclusion == "success" or .conclusion == "failure")][0].conclusion')
+          if [[ $previous != failure ]]; then
+            exit 0
+          fi
+          title='APT index publishing failed twice'
+          issue=$(gh issue list --repo "$GITHUB_REPOSITORY" --search "in:title $title" \
+            --json number,title --jq "[.[] | select(.title == \"$title\")][0].number // empty")
+          if [[ -z $issue ]]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" \
+              --body "Two consecutive APT publishing runs failed. Latest run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          fi
