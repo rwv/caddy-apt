@@ -1,0 +1,17 @@
+{
+	storage s3 {
+		endpoint https://s3.example.com
+		bucket caddy-certs
+		region us-east-1
+		access_key sample-access-key
+		secret_key sample-secret-key
+		prefix caddy
+	}
+}
+
+example.com {
+	tls {
+		dns cloudflare sample-token
+	}
+	respond "OK"
+}

@@ -1,0 +1,3 @@
+1
+cloudflare github.com/caddy-dns/cloudflare v0.2.4 dns.providers.cloudflare
+s3 github.com/rkl110/certmagic-s3 v1.4.3 caddy.storage.s3
