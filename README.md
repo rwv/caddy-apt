@@ -56,6 +56,6 @@ R2 Bucket Lock protects `pool/` and both architectures' `by-hash/` paths indefin
 
 ## Unattended updates
 
-The APT workflow also reconciles daily at 05:47 UTC. Two consecutive failed runs open one issue assigned to the repository owner. A successful run closes it. To monitor missing runs outside GitHub, configure the optional `APT_HEARTBEAT_URL` Actions secret with a dead-man monitor expecting a daily success ping. The workflow pings it after verifying the public index.
+The APT workflow also reconciles daily at 05:47 UTC. Two consecutive failed runs open one issue assigned to the repository owner. A successful run closes it. The workflow also opens an issue 30 days before the signing key expires. To monitor missing runs outside GitHub, configure the optional `APT_HEARTBEAT_URL` Actions secret with a dead-man monitor expecting a daily success ping. The workflow pings it after verifying the public index.
 
 The plugin workflow checks the Go module pins in each plugin package daily. It proposes one PR per affected package, builds the exact candidate on native amd64 and arm64 runners, and checks module registration and Caddyfile parsing. It squash-merges the tested commit and dispatches a release scoped to that package. A failed build leaves the PR open for the next run. The `verify_current` manual input exercises both build runners with the existing pins.

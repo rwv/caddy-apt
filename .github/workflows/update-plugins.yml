@@ -30,6 +30,7 @@ jobs:
     if: fromJSON(needs.discover.outputs.variants)[0] != null
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         variant: ${{ fromJSON(needs.discover.outputs.variants) }}
     permissions:
